@@ -5,9 +5,179 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1 class="text-3xl font-bold underline">
-    Hello world!
-  </h1>
+<body class="bg-zinc-600">
+  <div id="setup" class="container mx-auto min-w-48 md:max-w-screen flex flex-col justify-between absolute bottom-0 top-0">
+    <div class="p-6 w-full">
+      <h1 class="text-3xl text-white text-center font-bold">
+        Timer App
+      </h1>
+    </div>
+    <div class="p-6 w-full">
+      <div class="py-4">
+        <label class="block py-1 text-white text-2xl text-center">Minutes</label>
+        <input class="block mx-auto rounded-lg p-1 text-lg" type="number" id="input-mins" value=1 min=1/>
+      </div>
+
+      <div class="py-4">
+        <label class="block py-1 text-white text-2xl text-center">Repetitions</label>
+        <input class="block mx-auto rounded-lg p-1 text-lg" type="number" id="input-reps" value=8 min=1/>
+      </div>
+    </div>
+    <div class="p-6 w-full">
+      <button class="block mx-auto rounded-full w-48 p-3 bg-lime-500 drop-shadow-lg text-2xl text-black active:bg-lime-300" onclick="app.start()">
+        Start
+      </button>
+    </div>
+  </div>
+  <div id="running" class="container mx-auto min-w-48 md:max-w-screen flex flex-col justify-between absolute bottom-0 top-0 hidden">
+    <div class="p-6 w-full">
+      <h1 class="text-3xl text-white text-center font-bold">
+        Timer App
+      </h1>
+    </div>
+    <div class="p-6 w-full">
+      <div id="text-start" class="w-full text-3xl text-white text-center font-bold">
+        Starting...
+      </div>
+      <div id="text-init" class="w-full text-9xl text-white text-center font-bold hidden">
+        3
+      </div>
+      <div id="text-run" class="w-full text-6xl text-white text-center font-bold hidden">
+        <div id="text-run-rep">1</div>
+        <div id="text-run-time" class="font-mono">00:00</div>
+      </div>
+    </div>
+    <div class="p-6 w-full">
+      <button class="block mx-auto rounded-full w-48 p-3 bg-red-500 drop-shadow-lg text-2xl text-black active:bg-lime-300" onclick="app.stop()">
+        Stop
+      </button>
+    </div>
+  </div>
+  <script>
+    var app = {
+      setupScreen: null,
+      runningScreen: null,
+
+      minsInput: null,
+      repsInput: null,
+
+      startTextEl: null,
+      initTextEl: null,
+      runTextEl: null,
+      runRepTextEl: null,
+      runTimeTextEl: null,
+
+      totalMins: 1,
+      totalTime: 1,
+      totalReps: 1,
+
+      timer: null,
+      initTime: null,
+      startTime: null,
+      endTime: null,
+      initSecond: null,
+      curRepNum: null,
+      timePerRep: null,
+      done: false,
+
+      beepSound: null,
+
+      init: function () {
+        app.setupScreen = document.getElementById('setup');
+        app.runningScreen = document.getElementById('running');
+        app.minsInput = document.getElementById('input-mins');
+        app.repsInput = document.getElementById('input-reps');
+        app.startTextEl = document.getElementById('text-start');
+        app.initTextEl = document.getElementById('text-init');
+        app.runTextEl = document.getElementById('text-run');
+        app.runRepTextEl = document.getElementById('text-run-rep');
+        app.runTimeTextEl = document.getElementById('text-run-time');
+
+        app.beepSound = new Audio('beep.wav');
+        app.startSound = new Audio('start.wav');
+        app.endSound = new Audio('end.wav');
+      },
+
+      start: function () {
+        app.totalMins = parseInt(app.minsInput.value);
+        app.totalReps = parseInt(app.repsInput.value);
+
+        app.totalTime = app.totalMins * 60000;
+        app.timePerRep = (app.totalTime+0.0) / (app.totalReps+0.0);
+        app.curRepNum = null;
+        app.done = false;
+
+        app.setupScreen.classList.add('hidden');
+        app.runningScreen.classList.remove('hidden');
+
+        app.startTextEl.classList.remove('hidden');
+        app.initTextEl.classList.add('hidden');
+        app.runTextEl.classList.add('hidden');
+
+        app.initTime = null;
+        app.timer = window.requestAnimationFrame(app.tick);
+      },
+
+      stop: function () {
+        app.runningScreen.classList.add('hidden');
+        app.setupScreen.classList.remove('hidden');
+
+        if (app.timer) {
+          window.cancelAnimationFrame(app.timer);
+          app.timer = null;
+        }
+      },
+
+      tick: function (time) {
+        if (app.initTime === null) {
+          app.initTime = time;
+          app.startTime = time + 3000;
+          app.endTime = app.startTime + app.totalTime;
+
+          app.startTextEl.classList.add('hidden');
+          app.initTextEl.classList.remove('hidden');
+        }
+
+        let timeToStart = app.startTime - time;
+        if (timeToStart > 0)
+        {
+          let newInitSecond = Math.ceil(timeToStart / 1000.0);
+          if (app.initSecond !== newInitSecond) app.startSound.play();
+          app.initSecond = newInitSecond;
+          app.initTextEl.innerHTML = ""+app.initSecond;
+        } else {
+          app.initTextEl.classList.add('hidden');
+          app.runTextEl.classList.remove('hidden');
+        }
+
+        if (time >= app.startTime) {
+          let timeLeft = app.endTime - time;
+          if (timeLeft > 0) {
+            let newRepNum = Math.floor((app.totalTime - timeLeft) / app.timePerRep)+1;
+            if (app.curRepNum !== newRepNum) app.beepSound.play();
+
+            app.curRepNum = newRepNum;
+            app.runRepTextEl.innerHTML = ""+app.curRepNum;
+
+            let secs = Math.floor(timeLeft/1000);
+            let timeMin = ''+Math.floor(secs/60);
+            if (timeMin.length < 2) timeMin = '0'+timeMin;
+            let timeSec = ''+secs%60;
+            if (timeSec.length < 2) timeSec = '0'+timeSec;
+
+            app.runTimeTextEl.innerHTML = timeMin+':'+timeSec;
+          } else if (!app.done) {
+            app.endSound.play();
+            app.done = true;
+            app.stop();
+          }
+        }
+
+        if (!app.done) app.timer = window.requestAnimationFrame(app.tick);
+      }
+    }
+
+    app.init();
+  </script>
 </body>
 </html>
