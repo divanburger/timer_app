@@ -48,7 +48,7 @@
       </div>
     </div>
     <div class="p-6 w-full">
-      <button class="block mx-auto rounded-full w-48 p-3 bg-red-500 drop-shadow-lg text-2xl text-black active:bg-lime-300" onclick="app.stop()">
+      <button class="block mx-auto rounded-full w-48 p-3 bg-red-500 drop-shadow-lg text-2xl text-black active:bg-red-300" onclick="app.stop()">
         Stop
       </button>
     </div>
@@ -80,7 +80,11 @@
       timePerRep: null,
       done: false,
 
+      wakeLock: null,
+
       beepSound: null,
+      startSound: null,
+      endSound: null,
 
       init: function () {
         app.setupScreen = document.getElementById('setup');
@@ -114,6 +118,20 @@
         app.initTextEl.classList.add('hidden');
         app.runTextEl.classList.add('hidden');
 
+        app.wakeLock = null;
+        if ('wakeLock' in navigator) {
+          try {
+            navigator.wakeLock.request('screen').then(function (wakeLock) {
+              app.wakeLock = wakeLock;
+              console.log('Acquired wakelock');
+            });
+          } catch (err) {
+            console.log('Failed to acquire wakelock: ' + err.name + ' - ' + err.message);
+          }
+        } else {
+          console.log('Wakelock unsupported');
+        }
+
         app.initTime = null;
         app.timer = window.requestAnimationFrame(app.tick);
       },
@@ -125,6 +143,12 @@
         if (app.timer) {
           window.cancelAnimationFrame(app.timer);
           app.timer = null;
+        }
+
+        if (app.wakeLock) {
+          app.wakeLock.release();
+          app.wakeLock = null;
+          console.log('Wakelock released');
         }
       },
 
